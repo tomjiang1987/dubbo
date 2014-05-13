@@ -84,17 +84,24 @@ final class MinaCodecAdapter implements ProtocolCodecFactory {
             out.flush();
         }
     }
-
+    
+    public static String remainBuffer = "REMAIN-BUFFER-KEY";
+    
     private class InternalDecoder implements ProtocolDecoder {
-
-        private ChannelBuffer buffer = ChannelBuffers.EMPTY_BUFFER;
 
         public void decode(IoSession session, ByteBuffer in, ProtocolDecoderOutput out) throws Exception {
             int readable = in.limit();
             if (readable <= 0) return;
 
             ChannelBuffer frame;
-
+            Object bufferObj = session.getAttribute(remainBuffer);
+            ChannelBuffer buffer;
+            if(bufferObj == null){
+            	buffer = ChannelBuffers.EMPTY_BUFFER;
+            }else{
+            	buffer = (ChannelBuffer)bufferObj;
+            }
+            
             if (buffer.readable()) {
                 if (buffer instanceof DynamicChannelBuffer) {
                     buffer.writeBytes(in.buf());
@@ -142,6 +149,7 @@ final class MinaCodecAdapter implements ProtocolCodecFactory {
                 } else {
                     buffer = ChannelBuffers.EMPTY_BUFFER;
                 }
+                session.setAttribute(remainBuffer,buffer);
                 MinaChannel.removeChannelIfDisconnectd(session);
             }
         }

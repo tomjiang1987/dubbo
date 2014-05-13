@@ -41,7 +41,8 @@ public class CallbackServiceImpl implements CallbackService {
                            try {
                                entry.getValue().changed(getChanged(entry.getKey()));
                            } catch (Throwable t) {
-                               listeners.remove(entry.getKey());
+                               //listeners.remove(entry.getKey());
+                        	   System.out.println(entry.getKey() + "\n"+ t );
                            }
                        }
                        Thread.sleep(5000); // 定时触发变更通知

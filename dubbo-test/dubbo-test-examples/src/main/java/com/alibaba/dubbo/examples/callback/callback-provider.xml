@@ -22,13 +22,13 @@
 
     <dubbo:application name="callback-provider"  />
     
-    <dubbo:registry address="multicast://224.5.6.7:1234" />
+    <dubbo:registry address="multicast://224.5.6.7:1234?unicast=false" />
     
-    <dubbo:protocol name="dubbo" port="20880" />
+    <dubbo:protocol name="dubbo" transporter="mina"/>
     
     <bean id="callbackService" class="com.alibaba.dubbo.examples.callback.impl.CallbackServiceImpl" />
     
-	<dubbo:service interface="com.alibaba.dubbo.examples.callback.api.CallbackService" ref="callbackService" connections="1" callbacks="1000">
+	<dubbo:service interface="com.alibaba.dubbo.examples.callback.api.CallbackService" ref="callbackService" connections="1" callbacks="1000000">
 		<dubbo:method name="addListener">
 			<dubbo:argument index="1" callback="true" />
 			<!--<dubbo:argument type="com.demo.CallbackListener" callback="true" />-->
