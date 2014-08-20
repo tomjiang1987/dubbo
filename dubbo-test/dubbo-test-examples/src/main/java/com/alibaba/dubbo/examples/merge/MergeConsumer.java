@@ -33,7 +33,7 @@ public class MergeConsumer {
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(config);
         context.start();
         MergeService mergeService = (MergeService)context.getBean("mergeService");
-        for (int i = 0; i < Integer.MAX_VALUE; i ++) {
+        for (int i = 0; i < 1000; i ++) {
             try {
                 List<String> result = mergeService.mergeResult();
                 System.out.println("(" + i + ") " + result);
@@ -42,6 +42,8 @@ public class MergeConsumer {
                 e.printStackTrace();
             }
         }
+        
+        System.in.read();
     }
     
 }

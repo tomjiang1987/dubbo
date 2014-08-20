@@ -17,7 +17,7 @@ package com.alibaba.dubbo.examples.generic;
 
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import com.alibaba.dubbo.examples.generic.api.IUserService;
+import com.alibaba.dubbo.examples.generic.api.IService;
 import com.alibaba.dubbo.examples.generic.api.IUserService.Params;
 import com.alibaba.dubbo.examples.generic.api.IUserService.User;
 
@@ -32,7 +32,7 @@ public class GenericConsumer {
         String config = GenericConsumer.class.getPackage().getName().replace('.', '/') + "/generic-consumer.xml";
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(config);
         context.start();
-        IUserService userservice = (IUserService) context.getBean("userservice");
+        IService<Params, User> userservice = (IService)context.getBean("userservice");
         User user = userservice.get(new Params("a=b"));
         System.out.println(user);
         System.in.read();
