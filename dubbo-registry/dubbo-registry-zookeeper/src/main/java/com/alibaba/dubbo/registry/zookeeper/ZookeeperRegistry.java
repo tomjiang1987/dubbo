@@ -18,20 +18,28 @@ package com.alibaba.dubbo.registry.zookeeper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.logger.Logger;
 import com.alibaba.dubbo.common.logger.LoggerFactory;
+import com.alibaba.dubbo.common.threadpool.support.AbortPolicyWithReport;
 import com.alibaba.dubbo.common.utils.ConcurrentHashSet;
+import com.alibaba.dubbo.common.utils.NamedThreadFactory;
 import com.alibaba.dubbo.common.utils.UrlUtils;
 import com.alibaba.dubbo.registry.NotifyListener;
 import com.alibaba.dubbo.registry.support.FailbackRegistry;
 import com.alibaba.dubbo.remoting.zookeeper.ChildListener;
-import com.alibaba.dubbo.remoting.zookeeper.ZookeeperClient;
 import com.alibaba.dubbo.remoting.zookeeper.StateListener;
+import com.alibaba.dubbo.remoting.zookeeper.ZookeeperClient;
 import com.alibaba.dubbo.remoting.zookeeper.ZookeeperTransporter;
 import com.alibaba.dubbo.rpc.RpcException;
 
@@ -56,6 +64,10 @@ public class ZookeeperRegistry extends FailbackRegistry {
     
     private final ZookeeperClient zkClient;
     
+    private final ExecutorService executor;
+    
+    private final int   timeout = 100;
+    
     public ZookeeperRegistry(URL url, ZookeeperTransporter zookeeperTransporter) {
         super(url);
         if (url.isAnyHost()) {
@@ -78,6 +90,10 @@ public class ZookeeperRegistry extends FailbackRegistry {
             	}
             }
         });
+        
+        executor = new ThreadPoolExecutor(1, Integer.MAX_VALUE, 60000, TimeUnit.MILLISECONDS, 
+        		 new SynchronousQueue<Runnable>(),new NamedThreadFactory("zookeeper-registry", true),
+        		 new AbortPolicyWithReport("zookeeper-registry", url));
     }
 
     public boolean isAvailable() {
@@ -87,23 +103,43 @@ public class ZookeeperRegistry extends FailbackRegistry {
     public void destroy() {
         super.destroy();
         try {
-            zkClient.close();
+        	Future<Void> future = executor.submit(new Callable<Void>(){
+				public Void call() throws Exception {
+					zkClient.close();
+					return null;
+				}
+        	});
+        	future.get(timeout, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             logger.warn("Failed to close zookeeper client " + getUrl() + ", cause: " + e.getMessage(), e);
         }
     }
 
-    protected void doRegister(URL url) {
+    protected void doRegister(final URL url) {
         try {
-        	zkClient.create(toUrlPath(url), url.getParameter(Constants.DYNAMIC_KEY, true));
+        	Future<Void> future = executor.submit(new Callable<Void>(){
+				public Void call() throws Exception {
+					zkClient.create(toUrlPath(url), url.getParameter(Constants.DYNAMIC_KEY, true));
+					return null;
+				}
+        	});
+        	future.get(timeout, TimeUnit.MILLISECONDS);
+        	
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
         }
     }
 
-    protected void doUnregister(URL url) {
+    protected void doUnregister(final URL url) {
         try {
-            zkClient.delete(toUrlPath(url));
+        	Future<Void> future = executor.submit(new Callable<Void>(){
+				public Void call() throws Exception {
+					zkClient.delete(toUrlPath(url));
+					return null;
+				}
+        	});
+        	future.get(timeout, TimeUnit.MILLISECONDS);
+            
         } catch (Throwable e) {
             throw new RpcException("Failed to unregister " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
         }
@@ -111,76 +147,95 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     protected void doSubscribe(final URL url, final NotifyListener listener) {
         try {
-            if (Constants.ANY_VALUE.equals(url.getServiceInterface())) {
-                String root = toRootPath();
-                ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
-                if (listeners == null) {
-                    zkListeners.putIfAbsent(url, new ConcurrentHashMap<NotifyListener, ChildListener>());
-                    listeners = zkListeners.get(url);
-                }
-                ChildListener zkListener = listeners.get(listener);
-                if (zkListener == null) {
-                    listeners.putIfAbsent(listener, new ChildListener() {
-                        public void childChanged(String parentPath, List<String> currentChilds) {
-                            for (String child : currentChilds) {
-								child = URL.decode(child);
-                                if (! anyServices.contains(child)) {
-                                    anyServices.add(child);
-                                    subscribe(url.setPath(child).addParameters(Constants.INTERFACE_KEY, child, 
-                                            Constants.CHECK_KEY, String.valueOf(false)), listener);
-                                }
-                            }
-                        }
-                    });
-                    zkListener = listeners.get(listener);
-                }
-                zkClient.create(root, false);
-                List<String> services = zkClient.addChildListener(root, zkListener);
-                if (services != null && services.size() > 0) {
-                    for (String service : services) {
-						service = URL.decode(service);
-						anyServices.add(service);
-                        subscribe(url.setPath(service).addParameters(Constants.INTERFACE_KEY, service, 
-                                Constants.CHECK_KEY, String.valueOf(false)), listener);
-                    }
-                }
-            } else {
-                List<URL> urls = new ArrayList<URL>();
-                for (String path : toCategoriesPath(url)) {
-                    ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
-                    if (listeners == null) {
-                        zkListeners.putIfAbsent(url, new ConcurrentHashMap<NotifyListener, ChildListener>());
-                        listeners = zkListeners.get(url);
-                    }
-                    ChildListener zkListener = listeners.get(listener);
-                    if (zkListener == null) {
-                        listeners.putIfAbsent(listener, new ChildListener() {
-                            public void childChanged(String parentPath, List<String> currentChilds) {
-                            	ZookeeperRegistry.this.notify(url, listener, toUrlsWithEmpty(url, parentPath, currentChilds));
-                            }
-                        });
-                        zkListener = listeners.get(listener);
-                    }
-                    zkClient.create(path, false);
-                    List<String> children = zkClient.addChildListener(path, zkListener);
-                    if (children != null) {
-                    	urls.addAll(toUrlsWithEmpty(url, path, children));
-                    }
-                }
-                notify(url, listener, urls);
-            }
+        	Future<Void> future = executor.submit(new Callable<Void>(){
+				public Void call() throws Exception {
+					if (Constants.ANY_VALUE.equals(url.getServiceInterface())) {
+		                String root = toRootPath();
+		                ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
+		                if (listeners == null) {
+		                    zkListeners.putIfAbsent(url, new ConcurrentHashMap<NotifyListener, ChildListener>());
+		                    listeners = zkListeners.get(url);
+		                }
+		                ChildListener zkListener = listeners.get(listener);
+		                if (zkListener == null) {
+		                    listeners.putIfAbsent(listener, new ChildListener() {
+		                        public void childChanged(String parentPath, List<String> currentChilds) {
+		                            for (String child : currentChilds) {
+										child = URL.decode(child);
+		                                if (! anyServices.contains(child)) {
+		                                    anyServices.add(child);
+		                                    subscribe(url.setPath(child).addParameters(Constants.INTERFACE_KEY, child, 
+		                                            Constants.CHECK_KEY, String.valueOf(false)), listener);
+		                                }
+		                            }
+		                        }
+		                    });
+		                    zkListener = listeners.get(listener);
+		                }
+		                zkClient.create(root, false);
+		                List<String> services = zkClient.addChildListener(root, zkListener);
+		                if (services != null && services.size() > 0) {
+		                    for (String service : services) {
+								service = URL.decode(service);
+								anyServices.add(service);
+		                        subscribe(url.setPath(service).addParameters(Constants.INTERFACE_KEY, service, 
+		                                Constants.CHECK_KEY, String.valueOf(false)), listener);
+		                    }
+		                }
+		            } else {
+		                List<URL> urls = new ArrayList<URL>();
+		                for (String path : toCategoriesPath(url)) {
+		                    ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
+		                    if (listeners == null) {
+		                        zkListeners.putIfAbsent(url, new ConcurrentHashMap<NotifyListener, ChildListener>());
+		                        listeners = zkListeners.get(url);
+		                    }
+		                    ChildListener zkListener = listeners.get(listener);
+		                    if (zkListener == null) {
+		                        listeners.putIfAbsent(listener, new ChildListener() {
+		                            public void childChanged(String parentPath, List<String> currentChilds) {
+		                            	ZookeeperRegistry.this.notify(url, listener, toUrlsWithEmpty(url, parentPath, currentChilds));
+		                            }
+		                        });
+		                        zkListener = listeners.get(listener);
+		                    }
+		                    zkClient.create(path, false);
+		                    List<String> children = zkClient.addChildListener(path, zkListener);
+		                    if (children != null) {
+		                    	urls.addAll(toUrlsWithEmpty(url, path, children));
+		                    }
+		                }
+		                ZookeeperRegistry.this.notify(url, listener, urls);
+		            }
+					return null;
+				}
+        	});
+        	
+        	future.get(timeout, TimeUnit.MILLISECONDS);
+        	
+            
         } catch (Throwable e) {
             throw new RpcException("Failed to subscribe " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
         }
     }
 
-    protected void doUnsubscribe(URL url, NotifyListener listener) {
-        ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
-        if (listeners != null) {
-            ChildListener zkListener = listeners.get(listener);
-            if (zkListener != null) {
-                zkClient.removeChildListener(toUrlPath(url), zkListener);
-            }
+    protected void doUnsubscribe(final URL url,final NotifyListener listener) {
+    	try{
+    		Future<Void> future = executor.submit(new Callable<Void>(){
+    			public Void call() throws Exception {
+    				ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
+    		        if (listeners != null) {
+    		            ChildListener zkListener = listeners.get(listener);
+    		            if (zkListener != null) {
+    		                zkClient.removeChildListener(toUrlPath(url), zkListener);
+    		            }
+    		        }
+    				return null;
+    			}
+        	});
+        	future.get(timeout, TimeUnit.MILLISECONDS);
+    	}catch(Throwable e) {
+            throw new RpcException("Failed to unsubscribe " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
         }
     }
 

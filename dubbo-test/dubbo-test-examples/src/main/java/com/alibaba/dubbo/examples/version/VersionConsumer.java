@@ -31,7 +31,7 @@ public class VersionConsumer {
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(config);
         context.start();
         VersionService versionService = (VersionService) context.getBean("versionService");
-        for (int i = 0; i < 5; i ++) {
+        for (int i = 0; i < Integer.MAX_VALUE; i ++) {
             String hello = versionService.sayHello("world");
             System.out.println(hello);
             Thread.sleep(2000);
