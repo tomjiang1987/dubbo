@@ -24,6 +24,6 @@
     
     <dubbo:registry address="zookeeper://127.0.0.1:2181" client="curator"/>
     
-	<dubbo:reference id="versionService" interface="com.alibaba.dubbo.examples.version.api.VersionService" version="*" />
+	<dubbo:reference id="versionService" interface="com.alibaba.dubbo.examples.version.api.VersionService" version="*"/>
 
 </beans>
