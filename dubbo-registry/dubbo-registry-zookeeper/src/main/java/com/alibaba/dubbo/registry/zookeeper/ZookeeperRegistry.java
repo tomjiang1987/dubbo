@@ -66,7 +66,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
     
     private final ExecutorService executor;
     
-    private final int   timeout = 100;
+    private final int   timeout = 3000;
     
     public ZookeeperRegistry(URL url, ZookeeperTransporter zookeeperTransporter) {
         super(url);
