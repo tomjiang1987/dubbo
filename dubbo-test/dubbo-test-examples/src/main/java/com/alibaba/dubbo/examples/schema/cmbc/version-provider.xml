@@ -22,12 +22,10 @@
 
     <cmbc-rpc:application name="version-provider"  />
     
-    <cmbc-rpc:registry address="zookeeper://127.0.0.1:2181" client="curator" check="false"/>
+    <cmbc-rpc:registry address="zookeeper://127.0.0.1:2181" check="false"/>
     
-    <cmbc-rpc:protocol name="dubbo" port="20880" />
+    <bean id="versionService" class="com.alibaba.dubbo.examples.version.impl.VersionServiceImpl"/>
     
-    <bean id="versionService" class="com.alibaba.dubbo.examples.version.impl.VersionServiceImpl" />
-    
-	<cmbc-rpc:service interface="com.alibaba.dubbo.examples.version.api.VersionService" version="1.0.0" ref="versionService"/>
+	<cmbc-rpc:service interface="com.alibaba.dubbo.examples.version.api.VersionService" ref="versionService" version="1.0.0"/>
 	
 </beans>
