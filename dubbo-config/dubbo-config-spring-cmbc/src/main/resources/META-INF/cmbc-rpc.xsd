@@ -39,26 +39,13 @@
 				<xsd:documentation><![CDATA[ The method load balance. ]]></xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="async" type="xsd:string" use="optional" default="false">
-			<xsd:annotation>
-				<xsd:documentation><![CDATA[ The method does async. ]]></xsd:documentation>
-			</xsd:annotation>
-		</xsd:attribute>
-		<xsd:attribute name="sent" type="xsd:string" use="optional">
-			<xsd:annotation>
-				<xsd:documentation><![CDATA[ The async method return await message sent ]]></xsd:documentation>
-			</xsd:annotation>
-		</xsd:attribute>
+		
 		<xsd:attribute name="mock" type="xsd:string" use="optional">
 			<xsd:annotation>
 				<xsd:documentation><![CDATA[ Use service mock implemention. ]]></xsd:documentation>
 			</xsd:annotation>
 		</xsd:attribute>
-		<xsd:attribute name="merger" type="xsd:string" use="optional">
-			<xsd:annotation>
-				<xsd:documentation><![CDATA[ The multi-group result merger ]]></xsd:documentation>
-			</xsd:annotation>
-		</xsd:attribute>
+		
 		<xsd:attribute name="validation" type="xsd:string" use="optional">
 			<xsd:annotation>
 				<xsd:documentation><![CDATA[ Use service jsr303 validation, true/false. ]]></xsd:documentation>
@@ -75,11 +62,7 @@
 						<xsd:documentation><![CDATA[ The unique identifier for a bean. ]]></xsd:documentation>
 					</xsd:annotation>
 				</xsd:attribute>
-				<xsd:attribute name="local" type="xsd:string" use="optional">
-					<xsd:annotation>
-						<xsd:documentation><![CDATA[ Use service local implemention. ]]></xsd:documentation>
-					</xsd:annotation>
-				</xsd:attribute>
+				
 				<xsd:attribute name="stub" type="xsd:string" use="optional">
 					<xsd:annotation>
 						<xsd:documentation><![CDATA[ Use service local implemention. ]]></xsd:documentation>
@@ -101,11 +84,6 @@
 						<xsd:documentation><![CDATA[ The owner. ]]></xsd:documentation>
 					</xsd:annotation>
 				</xsd:attribute>
-				<xsd:attribute name="layer" type="xsd:string" use="optional">
-					<xsd:annotation>
-						<xsd:documentation><![CDATA[ layer info. ]]></xsd:documentation>
-					</xsd:annotation>
-				</xsd:attribute>
 				
 				<xsd:attribute name="callbacks" type="xsd:string" use="optional">
 					<xsd:annotation>
@@ -122,11 +100,7 @@
 						<xsd:documentation><![CDATA[ The service client disconnected. ]]></xsd:documentation>
 					</xsd:annotation>
 				</xsd:attribute>
-				<xsd:attribute name="scope" type="xsd:string" use="optional">
-					<xsd:annotation>
-						<xsd:documentation><![CDATA[ Defines the service visibility, choise:[local remote]. default is remote, which can be invoked by network。  ]]></xsd:documentation>
-					</xsd:annotation>
-				</xsd:attribute>
+				
 			</xsd:extension>
 		</xsd:complexContent>
 	</xsd:complexType>
@@ -154,11 +128,7 @@
 						<xsd:documentation><![CDATA[ Eager init reference. ]]></xsd:documentation>
 					</xsd:annotation>
 				</xsd:attribute>
-				<xsd:attribute name="sticky" type="xsd:string" use="optional">
-						<xsd:annotation>
-							<xsd:documentation><![CDATA[ Enable/Disable cluster sticky policy.Default false ]]></xsd:documentation>
-						</xsd:annotation>
-					</xsd:attribute>
+				
 				<xsd:attribute name="reconnect" type="xsd:string" use="optional">
 					<xsd:annotation>
 						<xsd:documentation><![CDATA[ remoting reconnect timer. false represent close reconnect. integer represent interval(ms) .default true(2000ms).]]></xsd:documentation>
@@ -438,11 +408,6 @@
 						<xsd:documentation><![CDATA[ The service implementation instance bean id. ]]></xsd:documentation>
 					</xsd:annotation>
 				</xsd:attribute>
-                <xsd:attribute name="generic" type="xsd:string" use="optional">
-                    <xsd:annotation>
-                        <xsd:documentation><![CDATA[ Generic service. ]]></xsd:documentation>
-                    </xsd:annotation>
-                </xsd:attribute>
 				<xsd:anyAttribute namespace="##other" processContents="lax" />
 			</xsd:extension>
 		</xsd:complexContent>
